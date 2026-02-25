@@ -512,6 +512,80 @@ class MetabaseServer {
               },
               required: ["database_id", "query"]
             }
+          },
+          {
+            name: "create_card",
+            description: "Create a new question/card in Metabase",
+            inputSchema: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                  description: "Name of the card"
+                },
+                description: {
+                  type: "string",
+                  description: "Description of the card"
+                },
+                database_id: {
+                  type: "number",
+                  description: "ID of the database to query"
+                },
+                query: {
+                  type: "string",
+                  description: "Native SQL query for the card"
+                },
+                display: {
+                  type: "string",
+                  description: "Display type for the card (table, scalar, line, bar, pie, etc.). Defaults to 'table'"
+                }
+              },
+              required: ["name", "database_id", "query"]
+            }
+          },
+          {
+            name: "create_dashboard",
+            description: "Create a new dashboard in Metabase",
+            inputSchema: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                  description: "Name of the dashboard"
+                },
+                description: {
+                  type: "string",
+                  description: "Description of the dashboard"
+                }
+              },
+              required: ["name"]
+            }
+          },
+          {
+            name: "add_card_to_dashboard",
+            description: "Add a card to a dashboard",
+            inputSchema: {
+              type: "object",
+              properties: {
+                dashboard_id: {
+                  type: "number",
+                  description: "ID of the dashboard"
+                },
+                card_id: {
+                  type: "number",
+                  description: "ID of the card to add"
+                },
+                size_x: {
+                  type: "number",
+                  description: "Width of the card on the dashboard (1-18). Defaults to 4"
+                },
+                size_y: {
+                  type: "number",
+                  description: "Height of the card on the dashboard. Defaults to 4"
+                }
+              },
+              required: ["dashboard_id", "card_id"]
+            }
           }
         ]
       };
@@ -661,6 +735,143 @@ class MetabaseServer {
             });
 
             this.logInfo(`Successfully executed SQL query against database: ${databaseId}`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response, null, 2)
+              }]
+            };
+          }
+
+          case "create_card": {
+            const name = request.params?.arguments?.name;
+            const description = request.params?.arguments?.description || '';
+            const databaseId = request.params?.arguments?.database_id;
+            const query = request.params?.arguments?.query;
+            const display = request.params?.arguments?.display || 'table';
+
+            if (!name) {
+              this.logWarn('Missing name parameter in create_card request', { requestId });
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Card name is required"
+              );
+            }
+
+            if (!databaseId) {
+              this.logWarn('Missing database_id parameter in create_card request', { requestId });
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Database ID is required"
+              );
+            }
+
+            if (!query) {
+              this.logWarn('Missing query parameter in create_card request', { requestId });
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "SQL query is required"
+              );
+            }
+
+            this.logDebug(`Creating card with name: ${name}`);
+
+            const cardData = {
+              name: name,
+              description: description,
+              display: display,
+              dataset_query: {
+                type: "native",
+                native: {
+                  query: query
+                },
+                database: databaseId
+              }
+            };
+
+            const response = await this.request<any>('/api/card', {
+              method: 'POST',
+              body: JSON.stringify(cardData)
+            });
+
+            this.logInfo(`Successfully created card: ${response.id} - ${name}`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response, null, 2)
+              }]
+            };
+          }
+
+          case "create_dashboard": {
+            const name = request.params?.arguments?.name;
+            const description = request.params?.arguments?.description || '';
+
+            if (!name) {
+              this.logWarn('Missing name parameter in create_dashboard request', { requestId });
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Dashboard name is required"
+              );
+            }
+
+            this.logDebug(`Creating dashboard with name: ${name}`);
+
+            const dashboardData = {
+              name: name,
+              description: description
+            };
+
+            const response = await this.request<any>('/api/dashboard', {
+              method: 'POST',
+              body: JSON.stringify(dashboardData)
+            });
+
+            this.logInfo(`Successfully created dashboard: ${response.id} - ${name}`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(response, null, 2)
+              }]
+            };
+          }
+
+          case "add_card_to_dashboard": {
+            const dashboardId = request.params?.arguments?.dashboard_id;
+            const cardId = request.params?.arguments?.card_id;
+            const sizeX = request.params?.arguments?.size_x || 4;
+            const sizeY = request.params?.arguments?.size_y || 4;
+
+            if (!dashboardId) {
+              this.logWarn('Missing dashboard_id parameter in add_card_to_dashboard request', { requestId });
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Dashboard ID is required"
+              );
+            }
+
+            if (!cardId) {
+              this.logWarn('Missing card_id parameter in add_card_to_dashboard request', { requestId });
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "Card ID is required"
+              );
+            }
+
+            this.logDebug(`Adding card ${cardId} to dashboard ${dashboardId}`);
+
+            const dashCardData = {
+              cardId: cardId,
+              sizeX: sizeX,
+              sizeY: sizeY
+            };
+
+            const response = await this.request<any>(`/api/dashboard/${dashboardId}/cards`, {
+              method: 'POST',
+              body: JSON.stringify(dashCardData)
+            });
+
+            this.logInfo(`Successfully added card ${cardId} to dashboard ${dashboardId}`);
             return {
               content: [{
                 type: "text",

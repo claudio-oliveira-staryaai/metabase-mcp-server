@@ -17,17 +17,28 @@ This TypeScript-based MCP server provides seamless integration with the Metabase
 - **Structured Data Access**: JSON-formatted responses for easy consumption by AI assistants
 - **Comprehensive Logging**: Detailed logging for easy debugging and monitoring
 - **Error Handling**: Robust error handling with clear error messages
+- **Dashboard Creation**: Create complete dashboards programmatically with multiple cards
+- **Card Creation**: Create new questions/cards with SQL queries
 
 ## Available Tools
 
 The server exposes the following tools for AI assistants:
 
+### Reading Tools
 - `list_dashboards`: Retrieve all available dashboards in your Metabase instance
 - `list_cards`: Get all saved questions/cards in Metabase
 - `list_databases`: View all connected database sources
 - `execute_card`: Run saved questions and retrieve results with optional parameters
 - `get_dashboard_cards`: Extract all cards from a specific dashboard
 - `execute_query`: Execute custom SQL queries against any connected database
+
+### Creation Tools
+- `create_card`: Create a new question/card in Metabase with SQL query
+  - Parameters: `name` (required), `database_id` (required), `query` (required), `description`, `display` (table, scalar, line, bar, pie, etc.)
+- `create_dashboard`: Create a new dashboard in Metabase
+  - Parameters: `name` (required), `description`
+- `add_card_to_dashboard`: Add a card to an existing dashboard
+  - Parameters: `dashboard_id` (required), `card_id` (required), `size_x`, `size_y`
 
 ## Configuration
 
@@ -57,6 +68,43 @@ LOG_LEVEL=info # Options: debug, info, warn, error, fatal
 ```
 
 You can set these environment variables directly or use a `.env` file with [dotenv](https://www.npmjs.com/package/dotenv).
+
+## Usage Examples
+
+### Creating Dashboards and Cards
+
+With the `create_card`, `create_dashboard`, and `add_card_to_dashboard` tools, you can programmatically create entire dashboards:
+
+#### Step 1: Create a Dashboard
+```json
+{
+  "name": "Sales Dashboard",
+  "description": "Dashboard showing sales metrics"
+}
+```
+
+#### Step 2: Create Cards with SQL Queries
+```json
+{
+  "name": "Monthly Revenue",
+  "database_id": 1,
+  "query": "SELECT DATE_TRUNC('month', DATE) as month, SUM(amount) as revenue FROM orders GROUP BY month",
+  "description": "Total revenue by month",
+  "display": "bar"
+}
+```
+
+#### Step 3: Add Cards to the Dashboard
+```json
+{
+  "dashboard_id": 5,
+  "card_id": 10,
+  "size_x": 8,
+  "size_y": 4
+}
+```
+
+This workflow enables AI assistants to create complete, customized dashboards from natural language requests!
 
 ## Installation
 
